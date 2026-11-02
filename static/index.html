@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>YouTube MP3 下载器</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0d0d0f; --surface:#161618; --surface2:#1e1e21; --border:#2a2a2e;
+  --red:#ff3b3b; --red-dim:rgba(255,59,59,0.12); --red-glow:rgba(255,59,59,0.25);
+  --text:#f0f0f0; --text-dim:#888; --text-muted:#555;
+  --green:#3bff8a; --yellow:#ffc93b;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  background:var(--bg); color:var(--text);
+  font-family:'Inter',system-ui,-apple-system,sans-serif;
+  font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased;
+}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:5px}
+::-webkit-scrollbar-thumb:hover{background:#3a3a3e}
+
+/* Header */
+header{
+  position:sticky;top:0;z-index:20;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:16px 24px; background:rgba(13,13,15,0.85);
+  backdrop-filter:blur(12px); border-bottom:1px solid var(--border);
+}
+.brand{display:flex;align-items:center;gap:12px}
+.logo{
+  width:38px;height:38px;border-radius:10px;
+  background:linear-gradient(135deg,var(--red),#c41e1e);
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 4px 16px var(--red-glow);
+}
+.logo svg{width:18px;height:18px;fill:#fff}
+.brand h1{font-size:16px;font-weight:700;letter-spacing:-0.01em}
+.subtitle{font-size:12px;color:var(--text-dim)}
+
+main{max-width:760px;margin:0 auto;padding:28px 24px 60px}
+
+.card{
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:16px; padding:22px; margin-bottom:20px;
+}
+.card-title{
+  display:flex;align-items:center;justify-content:space-between;
+  font-size:15px;font-weight:600;margin-bottom:16px;
+}
+
+/* Inputs */
+.url-input{
+  width:100%; background:var(--surface2); border:1px solid var(--border);
+  border-radius:10px; padding:13px 15px; color:var(--text); font-size:14px;
+  font-family:inherit; transition:border-color .15s, box-shadow .15s;
+}
+.url-input:focus{outline:none;border-color:var(--red);box-shadow:0 0 0 3px var(--red-dim)}
+.url-input::placeholder{color:var(--text-muted)}
+
+.row{display:flex;gap:10px;align-items:center}
+.row.mt{margin-top:12px}
+.spacer{flex:1}
+
+button{font-family:inherit;cursor:pointer;border:none;transition:all .15s}
+button:disabled{opacity:.45;cursor:not-allowed}
+.btn{
+  padding:11px 18px;border-radius:10px;font-size:14px;font-weight:600;
+  display:inline-flex;align-items:center;gap:7px;white-space:nowrap;
+}
+.btn-ghost{background:var(--surface2);color:var(--text);border:1px solid var(--border)}
+.btn-ghost:hover:not(:disabled){background:#26262a;border-color:#3a3a3e}
+.btn-primary{background:var(--red);color:#fff;box-shadow:0 4px 14px var(--red-glow)}
+.btn-primary:hover:not(:disabled){background:#ff5252;box-shadow:0 6px 20px var(--red-glow)}
+.btn-sm{padding:7px 12px;font-size:13px;border-radius:8px}
+
+/* Folder row */
+.folder-row{
+  display:flex;align-items:center;gap:10px;margin-top:14px;
+  background:var(--surface2);border:1px solid var(--border);border-radius:10px;
+  padding:10px 12px;
+}
+.folder-row .label{color:var(--text-dim);font-size:13px;flex-shrink:0}
+.folder-path{
+  flex:1;font-size:13px;color:var(--text);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;direction:rtl;text-align:left;
+}
+
+/* Quality select + toggle */
+select.quality{
+  background:var(--surface2);border:1px solid var(--border);color:var(--text);
+  padding:9px 12px;border-radius:9px;font-family:inherit;font-size:13px;cursor:pointer;
+}
+select.quality:focus{outline:none;border-color:var(--red)}
+
+.toggle{display:inline-flex;align-items:center;gap:9px;cursor:pointer;user-select:none}
+.toggle input{display:none}
+.switch{
+  width:40px;height:22px;background:var(--border);border-radius:11px;position:relative;
+  transition:background .2s;flex-shrink:0;
+}
+.switch::after{
+  content:'';position:absolute;top:2px;left:2px;width:18px;height:18px;
+  background:#fff;border-radius:50%;transition:transform .2s;
+}
+.toggle input:checked + .switch{background:var(--red)}
+.toggle input:checked + .switch::after{transform:translateX(18px)}
+.toggle .t-label{font-size:13px;color:var(--text-dim)}
+
+/* Preview (single) */
+.preview{display:none;margin-top:16px;padding:14px;background:var(--surface2);border-radius:12px}
+.preview.show{display:flex;gap:14px;align-items:center}
+.preview img{width:80px;height:52px;border-radius:8px;object-fit:cover;flex-shrink:0;background:#000}
+.preview .meta{min-width:0;flex:1}
+.preview .p-title{
+  font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  display:flex;align-items:center;gap:8px;
+}
+.preview .p-sub{font-size:12px;color:var(--text-dim);margin-top:3px}
+.badge{
+  background:var(--red-dim);color:var(--red);font-size:11px;font-weight:600;
+  padding:2px 8px;border-radius:6px;flex-shrink:0;
+}
+.badge-done{
+  background:rgba(59,255,138,0.12);color:var(--green);
+}
+
+/* Playlist list */
+.playlist{display:none;margin-top:16px}
+.playlist.show{display:block}
+.playlist-head{
+  display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:8px;flex-wrap:wrap;
+}
+.playlist-head .pl-title{font-weight:600;font-size:13px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.pl-actions{display:flex;align-items:center;gap:6px}
+.pl-items{
+  max-height:280px;overflow-y:auto;border:1px solid var(--border);border-radius:10px;
+  background:var(--surface2);
+}
+.pl-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid var(--border)}
+.pl-item:last-child{border-bottom:none}
+.pl-item:hover{background:#26262a}
+.pl-item.is-downloaded .pl-name{color:var(--text-dim)}
+.pl-item input[type=checkbox]{
+  width:16px;height:16px;accent-color:var(--red);cursor:pointer;flex-shrink:0;
+}
+.pl-idx{color:var(--text-muted);font-size:12px;width:22px;text-align:right;flex-shrink:0}
+.pl-name{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px}
+.pl-dur{color:var(--text-dim);font-size:12px;flex-shrink:0}
+
+/* Error */
+.error{display:none;color:var(--red);font-size:13px;margin-top:12px}
+.error.show{display:block;white-space:pre-wrap;word-break:break-all}
+
+/* Progress */
+.progress{display:none;margin-top:18px}
+.progress.show{display:block}
+.prog-top{display:flex;justify-content:space-between;font-size:13px;margin-bottom:8px}
+.prog-status{color:var(--text)}
+.prog-pct{color:var(--red);font-weight:600}
+.bar{height:8px;background:var(--surface2);border-radius:4px;overflow:hidden}
+.bar-fill{
+  height:100%;width:0%;border-radius:4px;
+  background:linear-gradient(90deg,#c41e1e,var(--red));
+  box-shadow:0 0 12px var(--red-glow);transition:width .3s ease;
+}
+.prog-bottom{display:flex;justify-content:space-between;font-size:12px;color:var(--text-dim);margin-top:8px}
+
+/* Files */
+.refresh-btn{background:none;color:var(--text-dim);font-size:13px;padding:5px 10px;border-radius:8px}
+.refresh-btn:hover{color:var(--text);background:var(--surface2)}
+.file-list{display:flex;flex-direction:column;gap:8px}
+.file-item{
+  display:flex;align-items:center;gap:12px;padding:12px 14px;
+  background:var(--surface2);border:1px solid var(--border);border-radius:11px;
+  cursor:pointer;transition:border-color .15s, background .15s;
+}
+.file-item:hover{background:#252529;border-color:#3a3a3e}
+.file-item.playing{
+  border-color:var(--red);background:rgba(255,59,59,0.08);
+}
+.file-icon{
+  width:36px;height:36px;border-radius:9px;background:var(--red-dim);
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  color:var(--red);font-size:14px;font-weight:700;
+}
+.file-item.playing .file-icon{
+  background:var(--red);color:#fff;box-shadow:0 2px 10px var(--red-glow);
+}
+.file-icon svg{width:17px;height:17px;fill:currentColor}
+.file-meta{flex:1;min-width:0}
+.file-name{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.file-item.playing .file-name{color:var(--red);font-weight:600}
+.file-size{font-size:12px;color:var(--text-dim);margin-top:2px}
+.file-actions{display:flex;gap:6px;flex-shrink:0}
+.icon-btn{
+  width:34px;height:34px;border-radius:8px;background:var(--surface);border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;font-size:15px;color:var(--text-dim);
+}
+.icon-btn:hover{color:var(--text);border-color:#3a3a3e}
+.icon-btn.del:hover{color:var(--red);border-color:var(--red);background:var(--red-dim)}
+.empty{text-align:center;padding:40px 20px;color:var(--text-muted)}
+.empty svg{width:42px;height:42px;fill:var(--text-muted);opacity:.5;margin-bottom:12px}
+
+/* Bottom Player Bar */
+body.has-player main{padding-bottom:120px}
+body.has-player .toast-wrap{bottom:96px}
+.player-bar{
+  position:fixed;left:0;right:0;bottom:0;z-index:40;
+  background:rgba(20,20,23,0.95);backdrop-filter:blur(16px);
+  border-top:1px solid var(--border);padding:12px 24px;
+  display:none;box-shadow:0 -8px 28px rgba(0,0,0,0.45);
+}
+.player-bar.show{display:block}
+.player-inner{
+  max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:8px;
+}
+.player-top{
+  display:flex;align-items:center;gap:10px;
+}
+.p-ctrl-btn{
+  background:var(--surface2);border:1px solid var(--border);color:var(--text);
+  height:34px;padding:0 10px;border-radius:8px;font-size:12px;font-weight:600;
+  display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.p-ctrl-btn:hover{background:#28282d;border-color:#3a3a3e}
+.p-ctrl-btn.play-main{
+  width:38px;height:38px;padding:0;border-radius:10px;
+  background:var(--red);border-color:var(--red);color:#fff;font-size:15px;
+  box-shadow:0 3px 12px var(--red-glow);
+}
+.p-ctrl-btn.play-main:hover{background:#ff5252}
+.player-title{
+  flex:1;min-width:0;font-size:13px;font-weight:600;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:0 4px;
+}
+.btn-del-playing{
+  background:var(--red-dim);color:var(--red);border:1px solid rgba(255,59,59,0.35);
+  height:34px;padding:0 12px;border-radius:8px;font-size:13px;font-weight:600;
+  display:inline-flex;align-items:center;gap:5px;flex-shrink:0;
+}
+.btn-del-playing:hover{background:var(--red);color:#fff;border-color:var(--red)}
+.player-seek-row{
+  display:flex;align-items:center;gap:10px;
+}
+.p-time{
+  font-size:12px;color:var(--text-dim);font-variant-numeric:tabular-nums;
+  min-width:38px;text-align:center;flex-shrink:0;
+}
+.seek-slider{
+  flex:1;-webkit-appearance:none;appearance:none;
+  height:6px;background:var(--surface2);border-radius:3px;outline:none;cursor:pointer;
+}
+.seek-slider::-webkit-slider-thumb{
+  -webkit-appearance:none;appearance:none;
+  width:14px;height:14px;border-radius:50%;background:var(--red);
+  box-shadow:0 0 8px var(--red-glow);cursor:pointer;transition:transform .1s;
+}
+.seek-slider::-webkit-slider-thumb:hover{transform:scale(1.2)}
+
+/* Toast */
+.toast-wrap{position:fixed;right:20px;bottom:20px;z-index:50;display:flex;flex-direction:column;gap:10px;transition:bottom .2s}
+.toast{
+  background:var(--surface);border:1px solid var(--border);border-left-width:3px;
+  border-radius:10px;padding:13px 16px;font-size:13px;min-width:220px;max-width:340px;
+  box-shadow:0 8px 28px rgba(0,0,0,.5);animation:slideIn .25s ease;
+}
+.toast.success{border-left-color:var(--green)}
+.toast.error{border-left-color:var(--red)}
+@keyframes slideIn{from{transform:translateX(20px);opacity:0}to{transform:translateX(0);opacity:1}}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <div class="logo">
+      <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+    </div>
+    <h1>YouTube MP3 下载器</h1>
+  </div>
+  <div class="subtitle">本地运行 · 高品质音频</div>
+</header>
+
+<main>
+  <!-- 卡片 1：输入区 -->
+  <div class="card">
+    <input id="url" class="url-input" placeholder="粘贴 YouTube 视频或播放列表链接…" autocomplete="off">
+
+    <div class="row mt">
+      <button id="btn-check" class="btn btn-ghost" onclick="fetchInfo()">检查</button>
+      <button id="btn-dl" class="btn btn-primary" onclick="startDownload()" disabled>下载 MP3</button>
+      <div class="spacer"></div>
+      <select id="quality" class="quality">
+        <option value="best">最高 320kbps</option>
+        <option value="high">高 256kbps</option>
+        <option value="medium">中 192kbps</option>
+        <option value="low">低 128kbps</option>
+      </select>
+    </div>
+
+    <div class="row mt">
+      <label class="toggle">
+        <input type="checkbox" id="pl-toggle">
+        <span class="switch"></span>
+        <span class="t-label">下载整个播放列表</span>
+      </label>
+    </div>
+
+    <!-- 储存文件夹 -->
+    <div class="folder-row">
+      <span class="label">保存到：</span>
+      <span id="folder-path" class="folder-path" title="">…</span>
+      <button class="btn btn-ghost btn-sm" onclick="pickFolder()">选择文件夹</button>
+    </div>
+
+    <!-- 单视频预览 -->
+    <div id="preview" class="preview">
+      <img id="pv-thumb" alt="">
+      <div class="meta">
+        <div class="p-title"><span id="pv-title"></span><span id="pv-badge" class="badge badge-done" style="display:none"></span></div>
+        <div id="pv-sub" class="p-sub"></div>
+      </div>
+    </div>
+
+    <!-- 播放列表勾选 -->
+    <div id="playlist" class="playlist">
+      <div class="playlist-head">
+        <div class="pl-title">
+          <span id="pl-name"></span>
+          <span id="pl-count" class="badge"></span>
+          <span id="pl-dl-count" class="badge badge-done" style="display:none"></span>
+        </div>
+        <div class="pl-actions">
+          <button class="btn btn-ghost btn-sm" id="pl-selnew" onclick="selectUndownloaded()" style="display:none">仅选未下载</button>
+          <button class="btn btn-ghost btn-sm" id="pl-selall" onclick="toggleSelectAll()">全不选</button>
+        </div>
+      </div>
+      <div id="pl-items" class="pl-items"></div>
+    </div>
+
+    <div id="error" class="error"></div>
+
+    <!-- 进度 -->
+    <div id="progress" class="progress">
+      <div class="prog-top">
+        <span id="prog-status" class="prog-status">下载中…</span>
+        <span id="prog-pct" class="prog-pct">0%</span>
+      </div>
+      <div class="bar"><div id="bar-fill" class="bar-fill"></div></div>
+      <div class="prog-bottom">
+        <span id="prog-speed"></span>
+        <span id="prog-eta"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 卡片 2：文件库 -->
+  <div class="card">
+    <div class="card-title">
+      <span>已下载文件 <span style="font-size:12px;color:var(--text-dim);font-weight:400;margin-left:6px">点击曲目直接试听</span></span>
+      <button class="refresh-btn" onclick="loadFiles()">↺ 刷新</button>
+    </div>
+    <div id="file-list" class="file-list"></div>
+  </div>
+</main>
+
+<!-- 底部播放条 -->
+<div id="player-bar" class="player-bar">
+  <div class="player-inner">
+    <div class="player-top">
+      <button id="p-play-btn" class="p-ctrl-btn play-main" onclick="togglePlay()" title="播放/暂停">▶</button>
+      <button class="p-ctrl-btn" onclick="seekRelative(-10)" title="快退 10 秒">-10s</button>
+      <button class="p-ctrl-btn" onclick="seekRelative(10)" title="快进 10 秒">+10s</button>
+      <button class="p-ctrl-btn" onclick="playNext()" title="下一首">⏭</button>
+      <div id="p-title" class="player-title" title="">未播放</div>
+      <button class="btn-del-playing" onclick="deleteCurrentPlaying()" title="不喜欢？一键删除并切下一首">🗑 一键删除</button>
+    </div>
+    <div class="player-seek-row">
+      <span id="p-cur" class="p-time">0:00</span>
+      <input id="p-seek" type="range" class="seek-slider" min="0" max="100" step="0.1" value="0">
+      <span id="p-dur" class="p-time">0:00</span>
+    </div>
+  </div>
+  <audio id="audio-el" preload="metadata"></audio>
+</div>
+
+<div id="toast-wrap" class="toast-wrap"></div>
+
+<script>
+const API = '';
+let currentJobId = null;
+let pollTimer = null;
+let infoData = null;        // 最近一次 /api/info 结果
+let allSelected = true;
+
+const STATUS_TEXT = {
+  queued:'排队中…', fetching:'正在获取信息…', downloading:'下载中…',
+  converting:'转换 MP3 中…', done:'完成！', error:'出错了'
+};
+
+const $ = id => document.getElementById(id);
+
+/* ---------- Toast ---------- */
+function toast(msg, type='success'){
+  const el = document.createElement('div');
+  el.className = 'toast ' + type;
+  el.textContent = msg;
+  $('toast-wrap').appendChild(el);
+  setTimeout(()=>{ el.style.opacity='0'; el.style.transition='opacity .3s'; setTimeout(()=>el.remove(),300); }, 3000);
+}
+function showError(msg){
+  const e = $('error');
+  e.textContent = msg; e.classList.add('show');
+}
+function clearError(){ $('error').classList.remove('show'); }
+
+/* ---------- 文件夹 ---------- */
+async function loadConfig(){
+  try{
+    const r = await fetch(API + '/api/config');
+    const d = await r.json();
+    setFolder(d.download_dir);
+  }catch(e){}
+}
+function setFolder(path){
+  const el = $('folder-path');
+  el.textContent = path || '…';
+  el.title = path || '';
+}
+async function pickFolder(){
+  // 优先用 pywebview 原生对话框
+  if(window.pywebview && window.pywebview.api && window.pywebview.api.pick_folder){
+    try{
+      const path = await window.pywebview.api.pick_folder();
+      if(path){ setFolder(path); toast('已设置保存目录'); loadFiles(); }
+    }catch(e){ showError('选择文件夹失败：' + e); }
+    return;
+  }
+  // 浏览器兜底：手动输入路径
+  const path = prompt('输入保存目录的完整路径：', $('folder-path').textContent);
+  if(!path) return;
+  try{
+    const r = await fetch(API + '/api/set-folder', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({path})
+    });
+    const d = await r.json();
+    if(!r.ok){ showError(d.error || '目录无效'); return; }
+    setFolder(d.download_dir); toast('已设置保存目录'); loadFiles();
+  }catch(e){ showError('设置失败：' + e); }
+}
+
+/* ---------- 检查信息 ---------- */
+async function fetchInfo(){
+  const url = $('url').value.trim();
+  if(!url){ showError('请输入链接'); return; }
+  clearError();
+  resetPreview();
+  $('btn-check').disabled = true;
+  $('btn-check').textContent = '检查中…';
+  try{
+    const r = await fetch(API + '/api/info', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({url})
+    });
+    const d = await r.json();
+    if(!r.ok){ showError(d.error || '获取信息失败'); return; }
+    infoData = d;
+    if(d.is_playlist){
+      renderPlaylist(d);
+      $('pl-toggle').checked = true;   // 播放列表自动勾选开关
+    }else{
+      renderSingle(d);
+    }
+    $('btn-dl').disabled = false;
+  }catch(e){
+    showError('请求失败：' + e);
+  }finally{
+    $('btn-check').disabled = false;
+    $('btn-check').textContent = '检查';
+  }
+}
+
+function resetPreview(){
+  $('preview').classList.remove('show');
+  $('playlist').classList.remove('show');
+  $('btn-dl').disabled = true;
+}
+
+function renderSingle(d){
+  $('pv-thumb').src = d.thumbnail || '';
+  $('pv-title').textContent = d.title || '';
+  const badge = $('pv-badge');
+  if(d.downloaded){
+    badge.textContent = '已下载过';
+    badge.style.display = 'inline-block';
+  }else{
+    badge.style.display = 'none';
+  }
+  const sub = [d.uploader, d.duration].filter(Boolean).join(' · ');
+  $('pv-sub').textContent = sub;
+  $('preview').classList.add('show');
+}
+
+function updateSelectAllBtnState(){
+  const cbs = Array.from(document.querySelectorAll('.pl-cb'));
+  allSelected = cbs.length > 0 && cbs.every(cb => cb.checked);
+  $('pl-selall').textContent = allSelected ? '全不选' : '全选';
+}
+
+function renderPlaylist(d){
+  $('pl-name').textContent = d.title || '播放列表';
+  const total = d.count || 0;
+  const dlCount = d.downloaded_count || 0;
+  $('pl-count').textContent = total + ' 首';
+  const dlBadge = $('pl-dl-count');
+  const selNewBtn = $('pl-selnew');
+  if(dlCount > 0){
+    dlBadge.textContent = '已下载过 ' + dlCount + ' 首';
+    dlBadge.style.display = 'inline-block';
+    selNewBtn.style.display = (dlCount < total) ? 'inline-flex' : 'none';
+  }else{
+    dlBadge.style.display = 'none';
+    selNewBtn.style.display = 'none';
+  }
+
+  const box = $('pl-items');
+  box.innerHTML = '';
+  (d.entries || []).forEach(ent => {
+    const isDl = Boolean(ent.downloaded);
+    const row = document.createElement('label');
+    row.className = 'pl-item' + (isDl ? ' is-downloaded' : '');
+    row.innerHTML =
+      `<input type="checkbox" class="pl-cb"
+         data-url="${encodeURIComponent(ent.url)}"
+         data-id="${escapeHtml(ent.id || '')}"
+         data-downloaded="${isDl ? 'true' : 'false'}"
+         ${isDl ? '' : 'checked'}>
+       <span class="pl-idx">${ent.index + 1}</span>
+       <span class="pl-name" title="${escapeHtml(ent.title)}">${escapeHtml(ent.title)}</span>
+       ${isDl ? '<span class="badge badge-done">已下载过</span>' : ''}
+       <span class="pl-dur">${ent.duration || ''}</span>`;
+    row.querySelector('.pl-cb').addEventListener('change', updateSelectAllBtnState);
+    box.appendChild(row);
+  });
+  updateSelectAllBtnState();
+  $('playlist').classList.add('show');
+}
+
+function selectUndownloaded(){
+  document.querySelectorAll('.pl-cb').forEach(cb => {
+    cb.checked = cb.dataset.downloaded !== 'true';
+  });
+  updateSelectAllBtnState();
+}
+
+function toggleSelectAll(){
+  allSelected = !allSelected;
+  document.querySelectorAll('.pl-cb').forEach(cb => cb.checked = allSelected);
+  $('pl-selall').textContent = allSelected ? '全不选' : '全选';
+}
+
+function escapeHtml(s){
+  return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+/* ---------- 下载 ---------- */
+async function startDownload(){
+  if(!infoData){ showError('请先检查链接'); return; }
+  clearError();
+  const quality = $('quality').value;
+  let body;
+
+  const wantPlaylist = infoData.is_playlist && $('pl-toggle').checked;
+  if(wantPlaylist){
+    const checkedCbs = Array.from(document.querySelectorAll('.pl-cb')).filter(cb => cb.checked);
+    if(checkedCbs.length === 0){
+      if((infoData.downloaded_count || 0) > 0 && infoData.downloaded_count === infoData.count){
+        showError('该播放列表中的所有曲目过去均已下载过。如需重新下载，请手动勾选需要重下的曲目。');
+      }else{
+        showError('请至少选择一个条目');
+      }
+      return;
+    }
+    const redownloadCbs = checkedCbs.filter(cb => cb.dataset.downloaded === 'true');
+    let force = false;
+    if(redownloadCbs.length > 0){
+      const ok = confirm(`所选曲目中包含 ${redownloadCbs.length} 首过去已下载过的曲目，确定要重新下载吗？`);
+      if(!ok) return;
+      force = true;
+    }
+    const urls = checkedCbs.map(cb => decodeURIComponent(cb.dataset.url));
+    body = { quality, is_playlist:true, urls, force };
+  }else{
+    let force = false;
+    if(infoData.downloaded){
+      const ok = confirm('该曲目过去已下载过，确定要重新下载吗？');
+      if(!ok) return;
+      force = true;
+    }
+    body = { quality, is_playlist:false, url: $('url').value.trim(), force };
+  }
+
+  $('btn-dl').disabled = true;
+  $('btn-check').disabled = true;
+  showProgress('queued', 0, '', '');
+  try{
+    const r = await fetch(API + '/api/download', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(body)
+    });
+    const d = await r.json();
+    if(!r.ok){ showError(d.error || '下载失败'); resetButtons(); return; }
+    currentJobId = d.job_id;
+    pollStatus();
+  }catch(e){
+    showError('请求失败：' + e); resetButtons();
+  }
+}
+
+function showProgress(status, pct, speed, eta){
+  $('progress').classList.add('show');
+  $('prog-status').textContent = STATUS_TEXT[status] || status;
+  $('prog-pct').textContent = Math.round(pct || 0) + '%';
+  $('bar-fill').style.width = (pct || 0) + '%';
+  $('prog-speed').textContent = speed || '';
+  $('prog-eta').textContent = eta ? ('剩余 ' + eta) : '';
+}
+
+function markCurrentInfoAsDownloaded(downloadedIds){
+  if(!infoData) return;
+  if(!infoData.is_playlist){
+    infoData.downloaded = true;
+    renderSingle(infoData);
+    return;
+  }
+  const idSet = new Set(downloadedIds || []);
+  let dlCount = 0;
+  (infoData.entries || []).forEach(ent => {
+    if(ent.id && idSet.has(String(ent.id))){
+      ent.downloaded = true;
+    }
+    if(ent.downloaded) dlCount++;
+  });
+  infoData.downloaded_count = dlCount;
+  renderPlaylist(infoData);
+}
+
+function pollStatus(){
+  if(!currentJobId) return;
+  fetch(API + '/api/status/' + currentJobId)
+    .then(r => r.json())
+    .then(d => {
+      showProgress(d.status, d.percent, d.speed, d.eta);
+      if(d.status === 'done'){
+        const nFail = (d.failed || []).length;
+        const nSkip = (d.skipped || []).length;
+        if(nFail){
+          toast('下载完成，但有 ' + nFail + ' 首失败（已删除/私享/受限）', 'error');
+          showError('以下条目下载失败：\n' + d.failed.join('\n'));
+        }else if(nSkip){
+          toast(`下载完成（已自动跳过 ${nSkip} 首历史已下载曲目）`);
+        }else{
+          toast('下载完成！');
+        }
+        markCurrentInfoAsDownloaded(d.downloaded_ids);
+        loadFiles();
+        resetButtons();
+        setTimeout(()=> $('progress').classList.remove('show'), 1500);
+        currentJobId = null;
+        return;
+      }
+      if(d.status === 'error'){
+        showError('下载出错：' + (d.error || '未知错误'));
+        toast('下载失败', 'error');
+        resetButtons();
+        $('progress').classList.remove('show');
+        currentJobId = null;
+        return;
+      }
+      pollTimer = setTimeout(pollStatus, 800);
+    })
+    .catch(e => {
+      pollTimer = setTimeout(pollStatus, 800);
+    });
+}
+
+function resetButtons(){
+  $('btn-dl').disabled = false;
+  $('btn-check').disabled = false;
+}
+
+/* ---------- 文件库 & 播放器 ---------- */
+let fileList = [];
+let currentPlayingFile = null; // 当前正在播放的 filename
+let isSeeking = false;
+const audioEl = $('audio-el');
+const seekSlider = $('p-seek');
+
+function fmtTime(sec){
+  if(!sec || ! isFinite(sec) || sec < 0) return '0:00';
+  sec = Math.floor(sec);
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return m + ':' + (s < 10 ? '0' + s : s);
+}
+
+async function loadFiles(){
+  try{
+    const r = await fetch(API + '/api/files');
+    const files = await r.json();
+    fileList = files || [];
+    renderFiles(fileList);
+  }catch(e){}
+}
+
+function renderFiles(files){
+  const list = $('file-list');
+  if(!files || files.length === 0){
+    list.innerHTML =
+      `<div class="empty">
+        <svg viewBox="0 0 24 24"><path d="M12 3v10.55A4 4 0 1014 17V7h4V3h-6z"/></svg>
+        <div>还没有下载任何文件</div>
+      </div>`;
+    return;
+  }
+  list.innerHTML = '';
+  const isPaused = audioEl.paused;
+  files.forEach(f => {
+    const isPlayingThis = (currentPlayingFile === f.filename);
+    const item = document.createElement('div');
+    item.className = 'file-item' + (isPlayingThis ? ' playing' : '');
+    const fn = encodeURIComponent(f.filename);
+    const iconHtml = isPlayingThis
+      ? (isPaused ? '▶' : '⏸')
+      : '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
+    item.innerHTML =
+      `<div class="file-icon">${iconHtml}</div>
+       <div class="file-meta">
+         <div class="file-name" title="${escapeHtml(f.title)}">${escapeHtml(f.title)}</div>
+         <div class="file-size">${f.size}</div>
+       </div>
+       <div class="file-actions">
+         <a class="icon-btn" href="${API}/api/download-file/${fn}" title="另存下载" download onclick="event.stopPropagation()">⬇</a>
+         <button class="icon-btn del" title="一键删除" onclick="event.stopPropagation(); deleteFile('${fn}')">🗑</button>
+       </div>`;
+    item.addEventListener('click', () => playFile(f.filename, f.title));
+    list.appendChild(item);
+  });
+}
+
+function playFile(filename, title){
+  if(currentPlayingFile === filename){
+    togglePlay();
+    return;
+  }
+  currentPlayingFile = filename;
+  const fn = encodeURIComponent(filename);
+  audioEl.src = `${API}/api/play/${fn}`;
+  $('p-title').textContent = title || filename;
+  $('p-title').title = title || filename;
+  $('p-cur').textContent = '0:00';
+  $('p-dur').textContent = '0:00';
+  seekSlider.value = 0;
+  $('player-bar').classList.add('show');
+  document.body.classList.add('has-player');
+  audioEl.play().catch(err => {
+    toast('播放失败：' + err, 'error');
+  });
+  renderFiles(fileList);
+}
+
+function togglePlay(){
+  if(!currentPlayingFile) return;
+  if(audioEl.paused){
+    audioEl.play().catch(()=>{});
+  }else{
+    audioEl.pause();
+  }
+}
+
+function seekRelative(deltaSec){
+  if(!currentPlayingFile || !isFinite(audioEl.duration)) return;
+  const next = Math.max(0, Math.min(audioEl.duration, (audioEl.currentTime || 0) + deltaSec));
+  audioEl.currentTime = next;
+}
+
+function playNext(){
+  if(!fileList || fileList.length === 0) return;
+  const idx = fileList.findIndex(f => f.filename === currentPlayingFile);
+  const nextIdx = (idx >= 0 && idx + 1 < fileList.length) ? (idx + 1) : 0;
+  const target = fileList[nextIdx];
+  if(target) playFile(target.filename, target.title);
+}
+
+function stopAndHidePlayer(){
+  audioEl.pause();
+  audioEl.removeAttribute('src');
+  audioEl.load();
+  currentPlayingFile = null;
+  $('player-bar').classList.remove('show');
+  document.body.classList.remove('has-player');
+}
+
+audioEl.addEventListener('play', () => {
+  $('p-play-btn').textContent = '⏸';
+  renderFiles(fileList);
+});
+audioEl.addEventListener('pause', () => {
+  $('p-play-btn').textContent = '▶';
+  renderFiles(fileList);
+});
+audioEl.addEventListener('loadedmetadata', () => {
+  $('p-dur').textContent = fmtTime(audioEl.duration);
+});
+audioEl.addEventListener('timeupdate', () => {
+  if(isSeeking) return;
+  const cur = audioEl.currentTime || 0;
+  const dur = audioEl.duration || 0;
+  $('p-cur').textContent = fmtTime(cur);
+  if(dur > 0 && isFinite(dur)){
+    $('p-dur').textContent = fmtTime(dur);
+    seekSlider.value = (cur / dur) * 100;
+  }
+});
+audioEl.addEventListener('ended', () => {
+  playNext();
+});
+
+seekSlider.addEventListener('input', () => {
+  isSeeking = true;
+  const dur = audioEl.duration || 0;
+  if(dur > 0 && isFinite(dur)){
+    const targetSec = ( parseFloat(seekSlider.value) / 100 ) * dur;
+    $('p-cur').textContent = fmtTime(targetSec);
+  }
+});
+seekSlider.addEventListener('change', () => {
+  const dur = audioEl.duration || 0;
+  if(dur > 0 && isFinite(dur)){
+    audioEl.currentTime = ( parseFloat(seekSlider.value) / 100 ) * dur;
+  }
+  isSeeking = false;
+});
+
+async function deleteFile(fnEncoded){
+  const rawFilename = decodeURIComponent(fnEncoded);
+  const wasPlayingThis = (currentPlayingFile === rawFilename);
+  const prevIdx = fileList.findIndex(f => f.filename === rawFilename);
+
+  if(wasPlayingThis){
+    audioEl.pause();
+  }
+  try{
+    const r = await fetch(API + '/api/delete/' + fnEncoded, { method:'DELETE' });
+    if(r.ok){
+      toast('已删除');
+      await loadFiles();
+      if(wasPlayingThis){
+        if(fileList.length > 0){
+          const nextIdx = Math.min(Math.max(0, prevIdx), fileList.length - 1);
+          const nextTrack = fileList[nextIdx];
+          currentPlayingFile = null;
+          playFile(nextTrack.filename, nextTrack.title);
+        }else{
+          stopAndHidePlayer();
+        }
+      }
+    }else{
+      const d = await r.json();
+      toast(d.error || '删除失败', 'error');
+    }
+  }catch(e){
+    toast('删除失败', 'error');
+  }
+}
+
+function deleteCurrentPlaying(){
+  if(!currentPlayingFile) return;
+  deleteFile(encodeURIComponent(currentPlayingFile));
+}
+
+/* ---------- 初始化 ---------- */
+$('url').addEventListener('keydown', e => { if(e.key === 'Enter') fetchInfo(); });
+window.addEventListener('DOMContentLoaded', () => { loadConfig(); loadFiles(); });
+</script>
+</body>
+</html>

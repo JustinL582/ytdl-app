@@ -1,0 +1,57 @@
+#!/bin/bash
+# YouTube MP3 下载器 — macOS .app 无终端启动器
+
+export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
+export LANG="zh_CN.UTF-8"
+export LC_ALL="zh_CN.UTF-8"
+
+# 定位项目根目录（支持 .app 放在项目目录内，也支持把 .app 拖到桌面或 /Applications）
+APP_BUNDLE_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
+CANDIDATE_DIR="$(cd "$APP_BUNDLE_DIR/.." && pwd)"
+
+if [ -f "$CANDIDATE_DIR/server.py" ]; then
+    PROJECT_DIR="$CANDIDATE_DIR"
+elif [ -f "/Users/justin/Projects/ytdl-app/server.py" ]; then
+    PROJECT_DIR="/Users/justin/Projects/ytdl-app"
+else
+    osascript -e 'display alert "找不到项目目录" message "未找到 server.py，请确认项目位于 /Users/justin/Projects/ytdl-app" as critical'
+    exit 1
+fi
+
+cd "$PROJECT_DIR" || exit 1
+
+VENV="$PROJECT_DIR/.venv"
+STAMP="$VENV/.requirements.sha"
+
+# 检查 ffmpeg
+if ! command -v ffmpeg >/dev/null 2>&1; then
+    osascript -e 'display alert "缺少依赖：ffmpeg" message "音频转换需要 ffmpeg，请在终端运行：brew install ffmpeg" as critical'
+    exit 1
+fi
+
+# 如首次运行或缺少 .venv，自动创建并安装依赖
+if [ ! -x "$VENV/bin/python" ]; then
+    BASE_PY=""
+    for cand in python3.12 python3.11 python3.13 python3; do
+        if command -v "$cand" >/dev/null 2>&1; then BASE_PY="$cand"; break; fi
+    done
+    if [ -z "$BASE_PY" ]; then
+        osascript -e 'display alert "缺少 Python 3" message "未找到 python3，请先安装 Python 3.8+" as critical'
+        exit 1
+    fi
+    "$BASE_PY" -m venv "$VENV"
+fi
+
+CUR_SHA="$(shasum "$PROJECT_DIR/requirements.txt" | cut -d' ' -f1)"
+if [ ! -f "$STAMP" ] || [ "$(cat "$STAMP")" != "$CUR_SHA" ] \
+   || ! "$VENV/bin/python" -c "import yt_dlp, flask, flask_cors, webview" >/dev/null 2>&1; then
+    "$VENV/bin/python" -m pip install --upgrade pip -q
+    if "$VENV/bin/python" -m pip install -r "$PROJECT_DIR/requirements.txt" -q; then
+        echo "$CUR_SHA" > "$STAMP"
+    else
+        osascript -e 'display alert "依赖安装失败" message "请检查网络连接后重试。" as critical'
+        exit 1
+    fi
+fi
+
+exec "$VENV/bin/python" "$PROJECT_DIR/server.py" >/tmp/ytdl-app.log 2>&1
