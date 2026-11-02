@@ -42,6 +42,11 @@ header{
 .logo svg{width:18px;height:18px;fill:#fff}
 .brand h1{font-size:16px;font-weight:700;letter-spacing:-0.01em}
 .subtitle{font-size:12px;color:var(--text-dim)}
+.head-right{display:flex;align-items:center;gap:14px}
+.lang-switch{display:inline-flex;border:1px solid var(--border);border-radius:8px;overflow:hidden;flex-shrink:0}
+.lang-switch button{background:var(--surface2);color:var(--text-dim);font-size:12px;font-weight:600;padding:5px 11px}
+.lang-switch button.active{background:var(--red);color:#fff}
+.lang-switch button:not(.active):hover{color:var(--text)}
 
 main{max-width:760px;margin:0 auto;padding:28px 24px 60px}
 
@@ -281,25 +286,31 @@ body.has-player .toast-wrap{bottom:96px}
     <div class="logo">
       <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
     </div>
-    <h1>YouTube MP3 下载器</h1>
+    <h1 data-i18n="app_title">YouTube MP3 下载器</h1>
   </div>
-  <div class="subtitle">本地运行 · 高品质音频</div>
+  <div class="head-right">
+    <div class="subtitle" data-i18n="subtitle">本地运行 · 高品质音频</div>
+    <div class="lang-switch" role="group" aria-label="Language">
+      <button type="button" data-lang="zh" onclick="setLang('zh')">中文</button>
+      <button type="button" data-lang="en" onclick="setLang('en')">EN</button>
+    </div>
+  </div>
 </header>
 
 <main>
   <!-- 卡片 1：输入区 -->
   <div class="card">
-    <input id="url" class="url-input" placeholder="粘贴 YouTube 视频或播放列表链接…" autocomplete="off">
+    <input id="url" class="url-input" data-i18n-placeholder="url_placeholder" placeholder="粘贴 YouTube 视频或播放列表链接…" autocomplete="off">
 
     <div class="row mt">
-      <button id="btn-check" class="btn btn-ghost" onclick="fetchInfo()">检查</button>
-      <button id="btn-dl" class="btn btn-primary" onclick="startDownload()" disabled>下载 MP3</button>
+      <button id="btn-check" class="btn btn-ghost" onclick="fetchInfo()" data-i18n="check">检查</button>
+      <button id="btn-dl" class="btn btn-primary" onclick="startDownload()" data-i18n="download_mp3" disabled>下载 MP3</button>
       <div class="spacer"></div>
       <select id="quality" class="quality">
-        <option value="best">最高 320kbps</option>
-        <option value="high">高 256kbps</option>
-        <option value="medium">中 192kbps</option>
-        <option value="low">低 128kbps</option>
+        <option value="best" data-i18n="q_best">最高 320kbps</option>
+        <option value="high" data-i18n="q_high">高 256kbps</option>
+        <option value="medium" data-i18n="q_medium">中 192kbps</option>
+        <option value="low" data-i18n="q_low">低 128kbps</option>
       </select>
     </div>
 
@@ -307,15 +318,15 @@ body.has-player .toast-wrap{bottom:96px}
       <label class="toggle">
         <input type="checkbox" id="pl-toggle">
         <span class="switch"></span>
-        <span class="t-label">下载整个播放列表</span>
+        <span class="t-label" data-i18n="toggle_playlist">下载整个播放列表</span>
       </label>
     </div>
 
     <!-- 储存文件夹 -->
     <div class="folder-row">
-      <span class="label">保存到：</span>
+      <span class="label" data-i18n="save_to">保存到：</span>
       <span id="folder-path" class="folder-path" title="">…</span>
-      <button class="btn btn-ghost btn-sm" onclick="pickFolder()">选择文件夹</button>
+      <button class="btn btn-ghost btn-sm" onclick="pickFolder()" data-i18n="choose_folder">选择文件夹</button>
     </div>
 
     <!-- 单视频预览 -->
@@ -336,7 +347,7 @@ body.has-player .toast-wrap{bottom:96px}
           <span id="pl-dl-count" class="badge badge-done" style="display:none"></span>
         </div>
         <div class="pl-actions">
-          <button class="btn btn-ghost btn-sm" id="pl-selnew" onclick="selectUndownloaded()" style="display:none">仅选未下载</button>
+          <button class="btn btn-ghost btn-sm" id="pl-selnew" onclick="selectUndownloaded()" data-i18n="sel_new" style="display:none">仅选未下载</button>
           <button class="btn btn-ghost btn-sm" id="pl-selall" onclick="toggleSelectAll()">全不选</button>
         </div>
       </div>
@@ -362,8 +373,8 @@ body.has-player .toast-wrap{bottom:96px}
   <!-- 卡片 2：文件库 -->
   <div class="card">
     <div class="card-title">
-      <span>已下载文件 <span style="font-size:12px;color:var(--text-dim);font-weight:400;margin-left:6px">点击曲目直接试听</span></span>
-      <button class="refresh-btn" onclick="loadFiles()">↺ 刷新</button>
+      <span><span data-i18n="files_title">已下载文件</span> <span data-i18n="files_hint" style="font-size:12px;color:var(--text-dim);font-weight:400;margin-left:6px">点击曲目直接试听</span></span>
+      <button class="refresh-btn" onclick="loadFiles()" data-i18n="refresh">↺ 刷新</button>
     </div>
     <div id="file-list" class="file-list"></div>
   </div>
@@ -373,12 +384,12 @@ body.has-player .toast-wrap{bottom:96px}
 <div id="player-bar" class="player-bar">
   <div class="player-inner">
     <div class="player-top">
-      <button id="p-play-btn" class="p-ctrl-btn play-main" onclick="togglePlay()" title="播放/暂停">▶</button>
-      <button class="p-ctrl-btn" onclick="seekRelative(-10)" title="快退 10 秒">-10s</button>
-      <button class="p-ctrl-btn" onclick="seekRelative(10)" title="快进 10 秒">+10s</button>
-      <button class="p-ctrl-btn" onclick="playNext()" title="下一首">⏭</button>
+      <button id="p-play-btn" class="p-ctrl-btn play-main" onclick="togglePlay()" data-i18n-title="play_pause" title="播放/暂停">▶</button>
+      <button class="p-ctrl-btn" onclick="seekRelative(-10)" data-i18n-title="back10" title="快退 10 秒">-10s</button>
+      <button class="p-ctrl-btn" onclick="seekRelative(10)" data-i18n-title="fwd10" title="快进 10 秒">+10s</button>
+      <button class="p-ctrl-btn" onclick="playNext()" data-i18n-title="next_track" title="下一首">⏭</button>
       <div id="p-title" class="player-title" title="">未播放</div>
-      <button class="btn-del-playing" onclick="deleteCurrentPlaying()" title="不喜欢？一键删除并切下一首">🗑 一键删除</button>
+      <button class="btn-del-playing" onclick="deleteCurrentPlaying()" data-i18n-title="del_playing_title" data-i18n="del_playing" title="不喜欢？一键删除并切下一首">🗑 一键删除</button>
     </div>
     <div class="player-seek-row">
       <span id="p-cur" class="p-time">0:00</span>
@@ -398,12 +409,151 @@ let pollTimer = null;
 let infoData = null;        // 最近一次 /api/info 结果
 let allSelected = true;
 
-const STATUS_TEXT = {
-  queued:'排队中…', fetching:'正在获取信息…', downloading:'下载中…',
-  converting:'转换 MP3 中…', done:'完成！', error:'出错了'
+const $ = id => document.getElementById(id);
+
+/* ---------- i18n（中文 / English） ---------- */
+const I18N = {
+  zh: {
+    app_title:'YouTube MP3 下载器', subtitle:'本地运行 · 高品质音频',
+    url_placeholder:'粘贴 YouTube 视频或播放列表链接…',
+    check:'检查', checking:'检查中…', download_mp3:'下载 MP3',
+    q_best:'最高 320kbps', q_high:'高 256kbps', q_medium:'中 192kbps', q_low:'低 128kbps',
+    toggle_playlist:'下载整个播放列表', save_to:'保存到：', choose_folder:'选择文件夹',
+    sel_new:'仅选未下载', sel_all:'全选', sel_none:'全不选',
+    files_title:'已下载文件', files_hint:'点击曲目直接试听', refresh:'↺ 刷新', empty:'还没有下载任何文件',
+    play_pause:'播放/暂停', back10:'快退 10 秒', fwd10:'快进 10 秒', next_track:'下一首',
+    not_playing:'未播放', del_playing_title:'不喜欢？一键删除并切下一首', del_playing:'🗑 一键删除',
+    save_copy:'另存下载', delete_title:'一键删除',
+    st_queued:'排队中…', st_fetching:'正在获取信息…', st_downloading:'下载中…',
+    st_converting:'转换 MP3 中…', st_done:'完成！', st_error:'出错了',
+    eta:'剩余 {eta}',
+    downloaded_before:'已下载过', downloaded_n:'已下载过 {n} 首',
+    count_tracks:'{n} 首', count_tracks_one:'{n} 首',
+    unknown_title:'(未知标题)', playlist_default:'播放列表',
+    enter_url:'请输入链接', check_first:'请先检查链接', select_one:'请至少选择一个条目',
+    all_downloaded_before:'该播放列表中的所有曲目过去均已下载过。如需重新下载，请手动勾选需要重下的曲目。',
+    confirm_redownload_n:'所选曲目中包含 {n} 首过去已下载过的曲目，确定要重新下载吗？',
+    confirm_redownload_one:'该曲目过去已下载过，确定要重新下载吗？',
+    pick_failed:'选择文件夹失败：{e}', prompt_path:'输入保存目录的完整路径：',
+    folder_set:'已设置保存目录', set_failed:'设置失败：{e}',
+    request_failed:'请求失败：{e}', info_failed_generic:'获取信息失败', download_failed_generic:'下载失败',
+    err_info_failed:'无法获取信息：{detail}', err_no_url:'请输入链接', err_no_selection:'未选择任何条目',
+    err_job_not_found:'任务不存在', err_file_not_found:'文件不存在', err_invalid_folder:'目录无效',
+    err_bad_language:'不支持的语言',
+    done_fail_toast:'下载完成，但有 {n} 首失败（已删除/私享/受限）',
+    failed_list_title:'以下条目下载失败：',
+    done_skip_toast:'下载完成（已自动跳过 {n} 首历史已下载曲目）', done_toast:'下载完成！',
+    dl_error:'下载出错：{e}', unknown_error:'未知错误', dl_failed_toast:'下载失败',
+    play_failed:'播放失败：{e}', deleted:'已删除', delete_failed:'删除失败'
+  },
+  en: {
+    app_title:'YouTube MP3 Downloader', subtitle:'Runs locally · High-quality audio',
+    url_placeholder:'Paste a YouTube video or playlist link…',
+    check:'Check', checking:'Checking…', download_mp3:'Download MP3',
+    q_best:'Best 320 kbps', q_high:'High 256 kbps', q_medium:'Medium 192 kbps', q_low:'Low 128 kbps',
+    toggle_playlist:'Download entire playlist', save_to:'Save to:', choose_folder:'Choose folder',
+    sel_new:'Select new only', sel_all:'Select all', sel_none:'Select none',
+    files_title:'Downloaded files', files_hint:'Click a track to play', refresh:'↺ Refresh', empty:'No files downloaded yet',
+    play_pause:'Play / Pause', back10:'Back 10 seconds', fwd10:'Forward 10 seconds', next_track:'Next track',
+    not_playing:'Not playing', del_playing_title:"Don't like it? Delete and skip to the next track", del_playing:'🗑 Delete',
+    save_copy:'Save a copy', delete_title:'Delete',
+    st_queued:'Queued…', st_fetching:'Fetching info…', st_downloading:'Downloading…',
+    st_converting:'Converting to MP3…', st_done:'Done!', st_error:'Something went wrong',
+    eta:'{eta} left',
+    downloaded_before:'Downloaded', downloaded_n:'{n} downloaded',
+    count_tracks:'{n} tracks', count_tracks_one:'{n} track',
+    unknown_title:'(Unknown title)', playlist_default:'Playlist',
+    enter_url:'Please enter a link', check_first:'Please check the link first', select_one:'Select at least one item',
+    all_downloaded_before:'Every track in this playlist has been downloaded before. To download again, tick the tracks you want to redownload.',
+    confirm_redownload_n:'{n} of the selected tracks were downloaded before. Download them again?',
+    confirm_redownload_one:'This track was downloaded before. Download it again?',
+    pick_failed:'Failed to choose folder: {e}', prompt_path:'Enter the full path of the save folder:',
+    folder_set:'Save folder updated', set_failed:'Failed to set folder: {e}',
+    request_failed:'Request failed: {e}', info_failed_generic:'Failed to fetch info', download_failed_generic:'Download failed',
+    err_info_failed:"Couldn't fetch info: {detail}", err_no_url:'Please enter a link', err_no_selection:'No items selected',
+    err_job_not_found:'Job not found', err_file_not_found:'File not found', err_invalid_folder:'Invalid folder',
+    err_bad_language:'Unsupported language',
+    done_fail_toast:'Finished, but {n} failed (deleted / private / restricted)',
+    failed_list_title:'These items failed to download:',
+    done_skip_toast:'Finished ({n} previously downloaded tracks skipped)', done_toast:'Download complete!',
+    dl_error:'Download error: {e}', unknown_error:'Unknown error', dl_failed_toast:'Download failed',
+    play_failed:'Playback failed: {e}', deleted:'Deleted', delete_failed:'Delete failed'
+  }
 };
 
-const $ = id => document.getElementById(id);
+let lang = 'zh';
+function detectLang(){
+  try{
+    const saved = localStorage.getItem('ytdl_lang');
+    if(saved === 'zh' || saved === 'en') return saved;
+  }catch(e){}
+  return (navigator.language || '').toLowerCase().startsWith('zh') ? 'zh' : 'en';
+}
+function t(key, vars){
+  let s = (I18N[lang] && I18N[lang][key]);
+  if(s === undefined) s = I18N.en[key];
+  if(s === undefined) return key;
+  if(vars) s = s.replace(/\{(\w+)\}/g, (m, k) => (k in vars ? vars[k] : m));
+  return s;
+}
+function nTracks(n){ return t(n === 1 ? 'count_tracks_one' : 'count_tracks', {n}); }
+// 后端报错带 code 时按当前语言翻译，否则退回后端给的文字
+function errMsg(d){
+  if(d && d.code && I18N.en['err_' + d.code] !== undefined){
+    return t('err_' + d.code, {detail: d.detail || ''});
+  }
+  return (d && d.error) || '';
+}
+
+function syncWindowTitle(){
+  try{
+    if(window.pywebview && window.pywebview.api && window.pywebview.api.set_title){
+      window.pywebview.api.set_title(t('app_title')).catch(()=>{});
+    }
+  }catch(e){}
+}
+
+function applyI18n(){
+  document.documentElement.lang = (lang === 'zh') ? 'zh-CN' : 'en';
+  document.title = t('app_title');
+  document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => { el.placeholder = t(el.dataset.i18nPlaceholder); });
+  document.querySelectorAll('[data-i18n-title]').forEach(el => { el.title = t(el.dataset.i18nTitle); });
+  document.querySelectorAll('.lang-switch button').forEach(b => b.classList.toggle('active', b.dataset.lang === lang));
+  syncWindowTitle();
+
+  // 以下是运行时生成的内容，需要按新语言重新渲染
+  if(!currentPlayingFile) $('p-title').textContent = t('not_playing');
+  updateSelectAllBtnState();
+  if(errorRender) $('error').textContent = errorRender();
+  if(lastProgress) showProgress(lastProgress.status, lastProgress.pct, lastProgress.speed, lastProgress.eta);
+  if(infoData){
+    if(infoData.is_playlist){
+      // 重新渲染会重置勾选，先记下再还原
+      const sel = new Map(Array.from(document.querySelectorAll('.pl-cb')).map(cb => [cb.dataset.url, cb.checked]));
+      renderPlaylist(infoData);
+      document.querySelectorAll('.pl-cb').forEach(cb => { if(sel.has(cb.dataset.url)) cb.checked = sel.get(cb.dataset.url); });
+      updateSelectAllBtnState();
+    }else{
+      renderSingle(infoData);
+    }
+  }
+  if(filesLoaded) renderFiles(fileList);
+}
+
+function setLang(l, persist = true){
+  if(l !== 'zh' && l !== 'en') return;
+  lang = l;
+  try{ localStorage.setItem('ytdl_lang', l); }catch(e){}
+  if(persist){
+    // 记到后端 config.json（pywebview 默认隐私模式，localStorage 记不住）
+    fetch(API + '/api/set-language', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({language: l})
+    }).catch(()=>{});
+  }
+  applyI18n();
+}
 
 /* ---------- Toast ---------- */
 function toast(msg, type='success'){
@@ -413,11 +563,15 @@ function toast(msg, type='success'){
   $('toast-wrap').appendChild(el);
   setTimeout(()=>{ el.style.opacity='0'; el.style.transition='opacity .3s'; setTimeout(()=>el.remove(),300); }, 3000);
 }
+// msg 可以是字符串，也可以是返回字符串的函数（切换语言时会重新调用）
+let errorRender = null;
 function showError(msg){
+  errorRender = (typeof msg === 'function') ? msg : () => msg;
   const e = $('error');
-  e.textContent = msg; e.classList.add('show');
+  e.textContent = errorRender(); e.classList.add('show');
 }
-function clearError(){ $('error').classList.remove('show'); }
+function showErrorKey(key, vars){ showError(() => t(key, vars)); }
+function clearError(){ errorRender = null; $('error').classList.remove('show'); }
 
 /* ---------- 文件夹 ---------- */
 async function loadConfig(){
@@ -425,6 +579,8 @@ async function loadConfig(){
     const r = await fetch(API + '/api/config');
     const d = await r.json();
     setFolder(d.download_dir);
+    // 后端记住的语言优先于本地猜测
+    if(d.language && d.language !== lang) setLang(d.language, false);
   }catch(e){}
 }
 function setFolder(path){
@@ -437,12 +593,12 @@ async function pickFolder(){
   if(window.pywebview && window.pywebview.api && window.pywebview.api.pick_folder){
     try{
       const path = await window.pywebview.api.pick_folder();
-      if(path){ setFolder(path); toast('已设置保存目录'); loadFiles(); }
-    }catch(e){ showError('选择文件夹失败：' + e); }
+      if(path){ setFolder(path); toast(t('folder_set')); loadFiles(); }
+    }catch(e){ showErrorKey('pick_failed', {e}); }
     return;
   }
   // 浏览器兜底：手动输入路径
-  const path = prompt('输入保存目录的完整路径：', $('folder-path').textContent);
+  const path = prompt(t('prompt_path'), $('folder-path').textContent);
   if(!path) return;
   try{
     const r = await fetch(API + '/api/set-folder', {
@@ -450,26 +606,26 @@ async function pickFolder(){
       body: JSON.stringify({path})
     });
     const d = await r.json();
-    if(!r.ok){ showError(d.error || '目录无效'); return; }
-    setFolder(d.download_dir); toast('已设置保存目录'); loadFiles();
-  }catch(e){ showError('设置失败：' + e); }
+    if(!r.ok){ showError(() => errMsg(d) || t('err_invalid_folder')); return; }
+    setFolder(d.download_dir); toast(t('folder_set')); loadFiles();
+  }catch(e){ showErrorKey('set_failed', {e}); }
 }
 
 /* ---------- 检查信息 ---------- */
 async function fetchInfo(){
   const url = $('url').value.trim();
-  if(!url){ showError('请输入链接'); return; }
+  if(!url){ showErrorKey('enter_url'); return; }
   clearError();
   resetPreview();
   $('btn-check').disabled = true;
-  $('btn-check').textContent = '检查中…';
+  $('btn-check').textContent = t('checking');
   try{
     const r = await fetch(API + '/api/info', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({url})
     });
     const d = await r.json();
-    if(!r.ok){ showError(d.error || '获取信息失败'); return; }
+    if(!r.ok){ showError(() => errMsg(d) || t('info_failed_generic')); return; }
     infoData = d;
     if(d.is_playlist){
       renderPlaylist(d);
@@ -479,10 +635,10 @@ async function fetchInfo(){
     }
     $('btn-dl').disabled = false;
   }catch(e){
-    showError('请求失败：' + e);
+    showErrorKey('request_failed', {e});
   }finally{
     $('btn-check').disabled = false;
-    $('btn-check').textContent = '检查';
+    $('btn-check').textContent = t('check');
   }
 }
 
@@ -494,10 +650,10 @@ function resetPreview(){
 
 function renderSingle(d){
   $('pv-thumb').src = d.thumbnail || '';
-  $('pv-title').textContent = d.title || '';
+  $('pv-title').textContent = d.title || t('unknown_title');
   const badge = $('pv-badge');
   if(d.downloaded){
-    badge.textContent = '已下载过';
+    badge.textContent = t('downloaded_before');
     badge.style.display = 'inline-block';
   }else{
     badge.style.display = 'none';
@@ -510,18 +666,18 @@ function renderSingle(d){
 function updateSelectAllBtnState(){
   const cbs = Array.from(document.querySelectorAll('.pl-cb'));
   allSelected = cbs.length > 0 && cbs.every(cb => cb.checked);
-  $('pl-selall').textContent = allSelected ? '全不选' : '全选';
+  $('pl-selall').textContent = allSelected ? t('sel_none') : t('sel_all');
 }
 
 function renderPlaylist(d){
-  $('pl-name').textContent = d.title || '播放列表';
+  $('pl-name').textContent = d.title || t('playlist_default');
   const total = d.count || 0;
   const dlCount = d.downloaded_count || 0;
-  $('pl-count').textContent = total + ' 首';
+  $('pl-count').textContent = nTracks(total);
   const dlBadge = $('pl-dl-count');
   const selNewBtn = $('pl-selnew');
   if(dlCount > 0){
-    dlBadge.textContent = '已下载过 ' + dlCount + ' 首';
+    dlBadge.textContent = t('downloaded_n', {n: dlCount});
     dlBadge.style.display = 'inline-block';
     selNewBtn.style.display = (dlCount < total) ? 'inline-flex' : 'none';
   }else{
@@ -533,6 +689,7 @@ function renderPlaylist(d){
   box.innerHTML = '';
   (d.entries || []).forEach(ent => {
     const isDl = Boolean(ent.downloaded);
+    const entTitle = ent.title || t('unknown_title');
     const row = document.createElement('label');
     row.className = 'pl-item' + (isDl ? ' is-downloaded' : '');
     row.innerHTML =
@@ -542,8 +699,8 @@ function renderPlaylist(d){
          data-downloaded="${isDl ? 'true' : 'false'}"
          ${isDl ? '' : 'checked'}>
        <span class="pl-idx">${ent.index + 1}</span>
-       <span class="pl-name" title="${escapeHtml(ent.title)}">${escapeHtml(ent.title)}</span>
-       ${isDl ? '<span class="badge badge-done">已下载过</span>' : ''}
+       <span class="pl-name" title="${escapeHtml(entTitle)}">${escapeHtml(entTitle)}</span>
+       ${isDl ? `<span class="badge badge-done">${escapeHtml(t('downloaded_before'))}</span>` : ''}
        <span class="pl-dur">${ent.duration || ''}</span>`;
     row.querySelector('.pl-cb').addEventListener('change', updateSelectAllBtnState);
     box.appendChild(row);
@@ -562,7 +719,7 @@ function selectUndownloaded(){
 function toggleSelectAll(){
   allSelected = !allSelected;
   document.querySelectorAll('.pl-cb').forEach(cb => cb.checked = allSelected);
-  $('pl-selall').textContent = allSelected ? '全不选' : '全选';
+  $('pl-selall').textContent = allSelected ? t('sel_none') : t('sel_all');
 }
 
 function escapeHtml(s){
@@ -571,7 +728,7 @@ function escapeHtml(s){
 
 /* ---------- 下载 ---------- */
 async function startDownload(){
-  if(!infoData){ showError('请先检查链接'); return; }
+  if(!infoData){ showErrorKey('check_first'); return; }
   clearError();
   const quality = $('quality').value;
   let body;
@@ -581,16 +738,16 @@ async function startDownload(){
     const checkedCbs = Array.from(document.querySelectorAll('.pl-cb')).filter(cb => cb.checked);
     if(checkedCbs.length === 0){
       if((infoData.downloaded_count || 0) > 0 && infoData.downloaded_count === infoData.count){
-        showError('该播放列表中的所有曲目过去均已下载过。如需重新下载，请手动勾选需要重下的曲目。');
+        showErrorKey('all_downloaded_before');
       }else{
-        showError('请至少选择一个条目');
+        showErrorKey('select_one');
       }
       return;
     }
     const redownloadCbs = checkedCbs.filter(cb => cb.dataset.downloaded === 'true');
     let force = false;
     if(redownloadCbs.length > 0){
-      const ok = confirm(`所选曲目中包含 ${redownloadCbs.length} 首过去已下载过的曲目，确定要重新下载吗？`);
+      const ok = confirm(t('confirm_redownload_n', {n: redownloadCbs.length}));
       if(!ok) return;
       force = true;
     }
@@ -599,7 +756,7 @@ async function startDownload(){
   }else{
     let force = false;
     if(infoData.downloaded){
-      const ok = confirm('该曲目过去已下载过，确定要重新下载吗？');
+      const ok = confirm(t('confirm_redownload_one'));
       if(!ok) return;
       force = true;
     }
@@ -615,22 +772,25 @@ async function startDownload(){
       body: JSON.stringify(body)
     });
     const d = await r.json();
-    if(!r.ok){ showError(d.error || '下载失败'); resetButtons(); return; }
+    if(!r.ok){ showError(() => errMsg(d) || t('download_failed_generic')); resetButtons(); return; }
     currentJobId = d.job_id;
     pollStatus();
   }catch(e){
-    showError('请求失败：' + e); resetButtons();
+    showErrorKey('request_failed', {e}); resetButtons();
   }
 }
 
+let lastProgress = null;   // 切换语言时用来重绘进度区
 function showProgress(status, pct, speed, eta){
+  lastProgress = {status, pct, speed, eta};
   $('progress').classList.add('show');
-  $('prog-status').textContent = STATUS_TEXT[status] || status;
+  $('prog-status').textContent = I18N.en['st_' + status] !== undefined ? t('st_' + status) : status;
   $('prog-pct').textContent = Math.round(pct || 0) + '%';
   $('bar-fill').style.width = (pct || 0) + '%';
   $('prog-speed').textContent = speed || '';
-  $('prog-eta').textContent = eta ? ('剩余 ' + eta) : '';
+  $('prog-eta').textContent = eta ? t('eta', {eta}) : '';
 }
+function hideProgress(){ lastProgress = null; $('progress').classList.remove('show'); }
 
 function markCurrentInfoAsDownloaded(downloadedIds){
   if(!infoData) return;
@@ -661,25 +821,25 @@ function pollStatus(){
         const nFail = (d.failed || []).length;
         const nSkip = (d.skipped || []).length;
         if(nFail){
-          toast('下载完成，但有 ' + nFail + ' 首失败（已删除/私享/受限）', 'error');
-          showError('以下条目下载失败：\n' + d.failed.join('\n'));
+          toast(t('done_fail_toast', {n: nFail}), 'error');
+          showError(() => t('failed_list_title') + '\n' + d.failed.join('\n'));
         }else if(nSkip){
-          toast(`下载完成（已自动跳过 ${nSkip} 首历史已下载曲目）`);
+          toast(t('done_skip_toast', {n: nSkip}));
         }else{
-          toast('下载完成！');
+          toast(t('done_toast'));
         }
         markCurrentInfoAsDownloaded(d.downloaded_ids);
         loadFiles();
         resetButtons();
-        setTimeout(()=> $('progress').classList.remove('show'), 1500);
+        setTimeout(hideProgress, 1500);
         currentJobId = null;
         return;
       }
       if(d.status === 'error'){
-        showError('下载出错：' + (d.error || '未知错误'));
-        toast('下载失败', 'error');
+        showError(() => t('dl_error', {e: errMsg(d) || t('unknown_error')}));
+        toast(t('dl_failed_toast'), 'error');
         resetButtons();
-        $('progress').classList.remove('show');
+        hideProgress();
         currentJobId = null;
         return;
       }
@@ -697,6 +857,7 @@ function resetButtons(){
 
 /* ---------- 文件库 & 播放器 ---------- */
 let fileList = [];
+let filesLoaded = false;
 let currentPlayingFile = null; // 当前正在播放的 filename
 let isSeeking = false;
 const audioEl = $('audio-el');
@@ -715,6 +876,7 @@ async function loadFiles(){
     const r = await fetch(API + '/api/files');
     const files = await r.json();
     fileList = files || [];
+    filesLoaded = true;
     renderFiles(fileList);
   }catch(e){}
 }
@@ -725,7 +887,7 @@ function renderFiles(files){
     list.innerHTML =
       `<div class="empty">
         <svg viewBox="0 0 24 24"><path d="M12 3v10.55A4 4 0 1014 17V7h4V3h-6z"/></svg>
-        <div>还没有下载任何文件</div>
+        <div>${escapeHtml(t('empty'))}</div>
       </div>`;
     return;
   }
@@ -746,8 +908,8 @@ function renderFiles(files){
          <div class="file-size">${f.size}</div>
        </div>
        <div class="file-actions">
-         <a class="icon-btn" href="${API}/api/download-file/${fn}" title="另存下载" download onclick="event.stopPropagation()">⬇</a>
-         <button class="icon-btn del" title="一键删除" onclick="event.stopPropagation(); deleteFile('${fn}')">🗑</button>
+         <a class="icon-btn" href="${API}/api/download-file/${fn}" title="${escapeHtml(t('save_copy'))}" download onclick="event.stopPropagation()">⬇</a>
+         <button class="icon-btn del" title="${escapeHtml(t('delete_title'))}" onclick="event.stopPropagation(); deleteFile('${fn}')">🗑</button>
        </div>`;
     item.addEventListener('click', () => playFile(f.filename, f.title));
     list.appendChild(item);
@@ -770,7 +932,7 @@ function playFile(filename, title){
   $('player-bar').classList.add('show');
   document.body.classList.add('has-player');
   audioEl.play().catch(err => {
-    toast('播放失败：' + err, 'error');
+    toast(t('play_failed', {e: err}), 'error');
   });
   renderFiles(fileList);
 }
@@ -859,7 +1021,7 @@ async function deleteFile(fnEncoded){
   try{
     const r = await fetch(API + '/api/delete/' + fnEncoded, { method:'DELETE' });
     if(r.ok){
-      toast('已删除');
+      toast(t('deleted'));
       await loadFiles();
       if(wasPlayingThis){
         if(fileList.length > 0){
@@ -873,10 +1035,10 @@ async function deleteFile(fnEncoded){
       }
     }else{
       const d = await r.json();
-      toast(d.error || '删除失败', 'error');
+      toast(errMsg(d) || t('delete_failed'), 'error');
     }
   }catch(e){
-    toast('删除失败', 'error');
+    toast(t('delete_failed'), 'error');
   }
 }
 
@@ -887,6 +1049,9 @@ function deleteCurrentPlaying(){
 
 /* ---------- 初始化 ---------- */
 $('url').addEventListener('keydown', e => { if(e.key === 'Enter') fetchInfo(); });
+window.addEventListener('pywebviewready', syncWindowTitle);
+lang = detectLang();
+applyI18n();
 window.addEventListener('DOMContentLoaded', () => { loadConfig(); loadFiles(); });
 </script>
 </body>

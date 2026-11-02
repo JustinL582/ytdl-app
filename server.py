@@ -47,7 +47,10 @@ CORS(app)
 # ----------------------------------------------------------------------------
 jobs = {}            # { job_id: { status, percent, speed, eta, files, error } }
 _state_lock = threading.Lock()
-state = {"download_dir": str(DEFAULT_DOWNLOAD_DIR)}
+state = {"download_dir": str(DEFAULT_DOWNLOAD_DIR), "language": None}
+
+SUPPORTED_LANGS = ("zh", "en")
+APP_TITLES = {"zh": "YouTube MP3 下载器", "en": "YouTube MP3 Downloader"}
 
 _history_lock = threading.Lock()
 history = {
@@ -149,18 +152,22 @@ def record_downloaded(video_id: str = None, title: str = None):
 def load_config():
     """读取上次使用的下载目录；无效则回退默认目录。"""
     download_dir = DEFAULT_DOWNLOAD_DIR
+    language = None
     try:
         if CONFIG_PATH.exists():
             data = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
             saved = data.get("download_dir")
             if saved and Path(saved).is_dir():
                 download_dir = Path(saved)
+            if data.get("language") in SUPPORTED_LANGS:
+                language = data["language"]
     except Exception:
         pass
     download_dir = Path(download_dir)
     download_dir.mkdir(parents=True, exist_ok=True)
     with _state_lock:
         state["download_dir"] = str(download_dir)
+        state["language"] = language
     load_history()
     sync_existing_files_to_history(DEFAULT_DOWNLOAD_DIR)
     sync_existing_files_to_history(download_dir)
@@ -168,8 +175,12 @@ def load_config():
 
 def save_config():
     try:
+        payload = {"download_dir": get_download_dir()}
+        language = get_language()
+        if language:
+            payload["language"] = language
         CONFIG_PATH.write_text(
-            json.dumps({"download_dir": get_download_dir()}, ensure_ascii=False, indent=2),
+            json.dumps(payload, ensure_ascii=False, indent=2),
             encoding="utf-8",
         )
     except Exception as e:
@@ -179,6 +190,17 @@ def save_config():
 def get_download_dir() -> str:
     with _state_lock:
         return state["download_dir"]
+
+
+def get_language():
+    with _state_lock:
+        return state["language"]
+
+
+def set_language(language: str):
+    with _state_lock:
+        state["language"] = language
+    save_config()
 
 
 def set_download_dir(path: str):
@@ -310,7 +332,7 @@ def download_worker(job_id, targets, quality, is_playlist, force=False):
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                     info = ydl.extract_info(url, download=False)
                     if not info:
-                        raise RuntimeError("无法解析视频信息")
+                        raise RuntimeError("Unable to parse video info")
                     if "entries" in info and info["entries"]:
                         info = next((e for e in info["entries"] if e), info)
                     vid = info.get("id")
@@ -376,7 +398,18 @@ def index():
 
 @app.route("/api/config")
 def api_config():
-    return jsonify({"download_dir": get_download_dir()})
+    return jsonify({"download_dir": get_download_dir(), "language": get_language()})
+
+
+@app.route("/api/set-language", methods=["POST"])
+def api_set_language():
+    """记住界面语言（zh / en），下次启动沿用。"""
+    data = request.get_json(force=True, silent=True) or {}
+    language = data.get("language")
+    if language not in SUPPORTED_LANGS:
+        return jsonify({"error": "不支持的语言", "code": "bad_language"}), 400
+    set_language(language)
+    return jsonify({"language": language})
 
 
 @app.route("/api/set-folder", methods=["POST"])
@@ -385,7 +418,7 @@ def api_set_folder():
     data = request.get_json(force=True, silent=True) or {}
     path = (data.get("path") or "").strip()
     if not path or not Path(path).expanduser().is_dir():
-        return jsonify({"error": "目录无效"}), 400
+        return jsonify({"error": "目录无效", "code": "invalid_folder"}), 400
     set_download_dir(str(Path(path).expanduser()))
     return jsonify({"download_dir": get_download_dir()})
 
@@ -395,7 +428,7 @@ def api_info():
     data = request.get_json(force=True, silent=True) or {}
     url = (data.get("url") or "").strip()
     if not url:
-        return jsonify({"error": "请输入链接"}), 400
+        return jsonify({"error": "请输入链接", "code": "no_url"}), 400
 
     ydl_opts = {
         "extract_flat": True,
@@ -407,7 +440,7 @@ def api_info():
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
     except Exception as e:
-        return jsonify({"error": f"无法获取信息：{e}"}), 400
+        return jsonify({"error": f"无法获取信息：{e}", "code": "info_failed", "detail": str(e)}), 400
 
     entries = info.get("entries")
     if entries is not None:
@@ -420,7 +453,7 @@ def api_info():
                 continue
             vid = ent.get("id")
             raw_title = ent.get("title")
-            title = raw_title or "(未知标题)"
+            title = raw_title or ""  # 空标题由前端按当前语言显示占位文字
             dl = is_downloaded(vid, raw_title)
             if dl:
                 downloaded_count += 1
@@ -436,7 +469,7 @@ def api_info():
             idx += 1
         return jsonify({
             "is_playlist": True,
-            "title": info.get("title") or "播放列表",
+            "title": info.get("title") or "",
             "uploader": info.get("uploader") or "",
             "count": len(items),
             "downloaded_count": downloaded_count,
@@ -450,7 +483,7 @@ def api_info():
     return jsonify({
         "is_playlist": False,
         "id": vid,
-        "title": raw_title or "(未知标题)",
+        "title": raw_title or "",
         "thumbnail": info.get("thumbnail") or "",
         "uploader": info.get("uploader") or "",
         "duration": format_duration(info.get("duration")),
@@ -470,12 +503,12 @@ def api_download():
         urls = data.get("urls") or []
         urls = [u for u in urls if u]
         if not urls:
-            return jsonify({"error": "未选择任何条目"}), 400
+            return jsonify({"error": "未选择任何条目", "code": "no_selection"}), 400
         targets = urls
     else:
         url = (data.get("url") or "").strip()
         if not url:
-            return jsonify({"error": "请输入链接"}), 400
+            return jsonify({"error": "请输入链接", "code": "no_url"}), 400
         targets = [url]
 
     job_id = f"job_{int(time.time() * 1000)}"
@@ -503,7 +536,7 @@ def api_download():
 def api_status(job_id):
     job = jobs.get(job_id)
     if not job:
-        return jsonify({"status": "error", "error": "任务不存在",
+        return jsonify({"status": "error", "error": "任务不存在", "code": "job_not_found",
                         "percent": 0, "speed": "", "eta": "", "files": []}), 404
     return jsonify(job)
 
@@ -517,7 +550,7 @@ def api_files():
 def api_play(filename):
     target = safe_path_in_dir(filename)
     if target is None or not target.exists():
-        return jsonify({"error": "文件不存在"}), 404
+        return jsonify({"error": "文件不存在", "code": "file_not_found"}), 404
     return send_file(str(target), mimetype="audio/mpeg", as_attachment=False, conditional=True)
 
 
@@ -525,7 +558,7 @@ def api_play(filename):
 def api_download_file(filename):
     target = safe_path_in_dir(filename)
     if target is None or not target.exists():
-        return jsonify({"error": "文件不存在"}), 404
+        return jsonify({"error": "文件不存在", "code": "file_not_found"}), 404
     return send_file(str(target), as_attachment=True, download_name=target.name)
 
 
@@ -533,7 +566,7 @@ def api_download_file(filename):
 def api_delete(filename):
     target = safe_path_in_dir(filename)
     if target is None or not target.exists():
-        return jsonify({"error": "文件不存在"}), 404
+        return jsonify({"error": "文件不存在", "code": "file_not_found"}), 404
     try:
         target.unlink()
     except OSError as e:
@@ -557,6 +590,12 @@ class Api:
         chosen = result[0] if isinstance(result, (list, tuple)) else result
         set_download_dir(chosen)
         return get_download_dir()
+
+    def set_title(self, title):
+        """切换界面语言时同步原生窗口标题。"""
+        import webview
+        if webview.windows and isinstance(title, str) and title:
+            webview.windows[0].set_title(title)
 
 
 # ----------------------------------------------------------------------------
@@ -603,7 +642,7 @@ def main():
 
     import webview
     webview.create_window(
-        "YouTube MP3 下载器",
+        APP_TITLES.get(get_language(), APP_TITLES["zh"]),
         f"http://{HOST}:{PORT}",
         js_api=Api(),
         width=900,
